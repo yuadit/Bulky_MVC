@@ -7,9 +7,14 @@ a.navbar-brand {
   word-break: break-all;
 }
 
+
 /*a {*/
 /*  color: #0077cc;*/
 /*}*/
+
+.main-content {
+  margin-bottom: 60px; /* Adjust the value according to your design */
+}
 
 .btn-primary {
   color: #fff;
