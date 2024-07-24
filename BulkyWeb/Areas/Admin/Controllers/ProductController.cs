@@ -1,6 +1,8 @@
 using Bulky.DataAccess.Repository.IRepository;
 using Bulky.Models;
+using Bulky.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace BulkyWeb.Areas.Admin.Controllers;
 
@@ -22,16 +24,36 @@ public class ProductController : Controller
 
     public IActionResult Create()
     {
-        return View();
+        IEnumerable<SelectListItem> CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
+        {
+            Text = u.Name,
+            Value = u.Id.ToString()
+        });
+        // ViewBag.CategoryList = CategoryList;
+        // ViewData["CategoryList"] = CategoryList;
+        ProductVM productVm = new()
+        {
+            CategoryList = CategoryList,
+            Product = new Product()
+        };
+        return View(productVm);
     }
 
     [HttpPost]
-    public IActionResult Create(Product obj)
+    public IActionResult Create(ProductVM obj)
     {
         // if (obj.ListPrice > obj.Price || obj.ListPrice > obj.Price50 || obj.ListPrice > obj.Price100)
         //     ModelState.AddModelError("ListPrice", "List Price cannot be cheaper than other prices");
-        if (!ModelState.IsValid) return View();
-        _unitOfWork.Product.Add(obj);
+        if (!ModelState.IsValid)
+        {
+            obj.CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
+            {
+                Text = u.Name,
+                Value = u.Id.ToString()
+            });
+            return View(obj);
+        }
+        _unitOfWork.Product.Add(obj.Product);
         _unitOfWork.Save();
         TempData["success"] = "Product created successfully";
         return RedirectToAction("Index");
@@ -61,7 +83,7 @@ public class ProductController : Controller
     public IActionResult Delete(int? id)
     {
         if (id is null or 0) return NotFound();
-        var productFromDb = _unitOfWork.Product.Get(u=> u.Id == id);
+        var productFromDb = _unitOfWork.Product.Get(u => u.Id == id);
         if (productFromDb == null) return NotFound();
         return View(productFromDb);
     }
@@ -70,7 +92,7 @@ public class ProductController : Controller
     [ActionName("Delete")]
     public IActionResult DeletePost(int? id)
     {
-        var obj = _unitOfWork.Product.Get(u=> u.Id == id);
+        var obj = _unitOfWork.Product.Get(u => u.Id == id);
         if (obj == null) return NotFound();
 
         _unitOfWork.Product.Remove(obj);
