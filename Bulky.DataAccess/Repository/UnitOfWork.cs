@@ -13,9 +13,11 @@ public class UnitOfWork : IUnitOfWork
         Category = new CategoryRepository(_db);
         Product = new ProductRepository(_db);
         Company = new CompanyRepository(_db);
+        ShoppingCart = new ShoppingCartRepository(_db);
     }
 
     public ICompanyRepository Company { get; }
+    public IShoppingCartRepository ShoppingCart { get; }
 
 
     public ICategoryRepository Category { get; }
