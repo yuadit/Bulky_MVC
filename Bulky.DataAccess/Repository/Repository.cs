@@ -32,9 +32,16 @@ public class Repository<T> : IRepository<T> where T : class
         return query.ToList();
     }
 
-    public T Get(Expression<Func<T, bool>> filter,string? includeProperties = null)
+    public T Get(Expression<Func<T, bool>> filter,string? includeProperties = null, bool tracked = false)
     {
-        IQueryable<T> query = dbSet;
+        IQueryable<T> query;
+        if (tracked) {
+            query= dbSet;
+        }
+        else {
+            query = dbSet.AsNoTracking();
+        }
+        
         query = query.Where(filter);
         if (!string.IsNullOrEmpty(includeProperties))
         {
