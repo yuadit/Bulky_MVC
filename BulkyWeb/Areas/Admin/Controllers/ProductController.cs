@@ -23,7 +23,7 @@ public class ProductController : Controller
 
     public ActionResult Index()
     {
-        var objProductList = _unitOfWork.Product.GetAll("Category").ToList();
+        var objProductList = _unitOfWork.Product.GetAll(null,"Category").ToList();
         return View(objProductList);
     }
 
@@ -103,7 +103,7 @@ public class ProductController : Controller
     [HttpGet]
     public IActionResult GetAll(int id)
     {
-        var objProductList = _unitOfWork.Product.GetAll("Category").ToList();
+        var objProductList = _unitOfWork.Product.GetAll(null,"Category").ToList();
         return Json(new { data = objProductList });
     }
     

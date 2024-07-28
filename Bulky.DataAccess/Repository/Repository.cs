@@ -7,9 +7,9 @@ namespace Bulky.DataAccess.Repository;
 
 public class Repository<T> : IRepository<T> where T : class
 {
+    private static readonly char[] separator = { ',' };
     private readonly ApplicationDbContext _db;
     internal DbSet<T> dbSet;
-    private static readonly char[] separator = new char[]{','};
 
     public Repository(ApplicationDbContext db)
     {
@@ -18,40 +18,31 @@ public class Repository<T> : IRepository<T> where T : class
         // _db.Products.Include(u => u.Category).Include(u => u.CategoryId);
     }
 
-    public IEnumerable<T> GetAll(string? includeProperties = null)
+    public IEnumerable<T> GetAll(Expression<Func<T, bool>>? filter, string? includeProperties = null)
     {
         IQueryable<T> query = dbSet;
+        if (filter != null) query = query.Where(filter);
         if (!string.IsNullOrEmpty(includeProperties))
-        {
             foreach (var includeProperty in includeProperties.Split(separator, StringSplitOptions.RemoveEmptyEntries))
-            {
                 query = query
                     .Include(includeProperty);
-            }
-        }
         return query.ToList();
     }
 
-    public T Get(Expression<Func<T, bool>> filter,string? includeProperties = null, bool tracked = false)
+    public T Get(Expression<Func<T, bool>> filter, string? includeProperties = null, bool tracked = false)
     {
         IQueryable<T> query;
-        if (tracked) {
-            query= dbSet;
-        }
-        else {
+        if (tracked)
+            query = dbSet;
+        else
             query = dbSet.AsNoTracking();
-        }
-        
+
         query = query.Where(filter);
         if (!string.IsNullOrEmpty(includeProperties))
-        {
             foreach (var includeProperty in includeProperties.Split(separator, StringSplitOptions.RemoveEmptyEntries))
-            {
                 query = query
                     .Include(includeProperty);
-            }
-        }
-        return query.FirstOrDefault() ?? throw new InvalidOperationException();
+        return query.FirstOrDefault();
     }
 
     public void Add(T entity)
