@@ -15,15 +15,18 @@ public class UnitOfWork : IUnitOfWork
         Company = new CompanyRepository(_db);
         ShoppingCart = new ShoppingCartRepository(_db);
         ApplicationUser = new ApplicationUserRepository(_db);
+        OrderHeader = new OrderHeaderRepository(_db);
+        OrderDetail = new OrderDetailRepository(_db);
     }
 
     public ICompanyRepository Company { get; }
     public IShoppingCartRepository ShoppingCart { get; }
     public IApplicationUserRepository ApplicationUser { get; }
-
-
     public ICategoryRepository Category { get; }
     public IProductRepository Product { get; }
+    public IOrderHeaderRepository OrderHeader { get; }
+    public IOrderDetailRepository OrderDetail { get; }
+
 
     public void Save()
     {
