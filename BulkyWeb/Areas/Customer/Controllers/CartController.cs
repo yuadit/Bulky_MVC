@@ -86,8 +86,7 @@ public class CartController : Controller
         ShoppingCartVM.OrderHeader.OrderDate = DateTime.Now;
         ShoppingCartVM.OrderHeader.ApplicationUserId = userId;
 
-        ShoppingCartVM.OrderHeader.ApplicationUser = _unitOfWork.ApplicationUser.Get(u => u.Id == userId);
-
+        var applicationUser = _unitOfWork.ApplicationUser.Get(u => u.Id == userId);
 
         foreach (var cart in ShoppingCartVM.ShoppingCartList)
         {
@@ -95,7 +94,7 @@ public class CartController : Controller
             ShoppingCartVM.OrderHeader.OrderTotal += cart.Price * cart.Count;
         }
 
-        if (ShoppingCartVM.OrderHeader.ApplicationUser.CompanyId.GetValueOrDefault() == 0)
+        if (applicationUser.CompanyId.GetValueOrDefault() == 0)
         {
             //it is a regular customer account and we need to capture payment
             ShoppingCartVM.OrderHeader.PaymentStatus = SD.PaymentStatusPending;
@@ -110,6 +109,7 @@ public class CartController : Controller
 
         _unitOfWork.OrderHeader.Add(ShoppingCartVM.OrderHeader);
         _unitOfWork.Save();
+        
         foreach (var cart in ShoppingCartVM.ShoppingCartList)
         {
             OrderDetail orderDetail = new()
@@ -124,7 +124,19 @@ public class CartController : Controller
         }
 
 
-        return View(ShoppingCartVM);
+        if (applicationUser.CompanyId.GetValueOrDefault() == 0)
+        {
+            //it is a regular customer account and we need to capture payment
+            //stripe logic
+        }
+
+        return RedirectToAction(nameof(OrderConfirmation), new { id = ShoppingCartVM.OrderHeader.Id });
+    }
+
+
+    public IActionResult OrderConfirmation(int id)
+    {
+        return View(id);
     }
 
     public IActionResult Plus(int cartId)
