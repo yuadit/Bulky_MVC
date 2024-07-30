@@ -30,13 +30,13 @@ public class OrderController : Controller
 
     public IActionResult Details(int orderId)
     {
-        OrderVM orderVM = new()
+        OrderVM = new OrderVM
         {
             OrderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == orderId, "ApplicationUser"),
             OrderDetail = _unitOfWork.OrderDetail.GetAll(u => u.OrderHeaderId == orderId, "Product")
         };
 
-        return View(orderVM);
+        return View(OrderVM);
     }
 
     [HttpPost]
@@ -52,14 +52,16 @@ public class OrderController : Controller
         orderHeaderFromDb.PostalCode = OrderVM.OrderHeader.PostalCode;
         if (!string.IsNullOrEmpty(OrderVM.OrderHeader.Carrier)) orderHeaderFromDb.Carrier = OrderVM.OrderHeader.Carrier;
         if (!string.IsNullOrEmpty(OrderVM.OrderHeader.TrackingNumber))
-            orderHeaderFromDb.TrackingNumber = OrderVM.OrderHeader.TrackingNumber;
+            orderHeaderFromDb.Carrier = OrderVM.OrderHeader.TrackingNumber;
         _unitOfWork.OrderHeader.Update(orderHeaderFromDb);
         _unitOfWork.Save();
 
         TempData["Success"] = "Order Details Updated Successfully.";
 
+
         return RedirectToAction(nameof(Details), new { orderId = orderHeaderFromDb.Id });
     }
+
 
     [HttpPost]
     [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
@@ -104,7 +106,7 @@ public class OrderController : Controller
             };
 
             var service = new RefundService();
-            Refund refund = service.Create(options);
+            var refund = service.Create(options);
 
             _unitOfWork.OrderHeader.UpdateStatus(orderHeader.Id, SD.StatusCancelled, SD.StatusRefunded);
         }
@@ -117,67 +119,75 @@ public class OrderController : Controller
         TempData["Success"] = "Order Cancelled Successfully.";
         return RedirectToAction(nameof(Details), new { orderId = OrderVM.OrderHeader.Id });
     }
-    
-      [ActionName("Details")]
-        [HttpPost]
-        public IActionResult Details_PAY_NOW() 
+
+
+    [ActionName("Details")]
+    [HttpPost]
+    public IActionResult Details_PAY_NOW()
+    {
+        OrderVM.OrderHeader = _unitOfWork.OrderHeader
+            .Get(u => u.Id == OrderVM.OrderHeader.Id, "ApplicationUser");
+        OrderVM.OrderDetail = _unitOfWork.OrderDetail
+            .GetAll(u => u.OrderHeaderId == OrderVM.OrderHeader.Id, "Product");
+
+        //stripe logic
+        var domain = "https://localhost:7169/";
+        var options = new SessionCreateOptions
         {
-            OrderVM.OrderHeader = _unitOfWork.OrderHeader
-                .Get(u => u.Id == OrderVM.OrderHeader.Id, includeProperties: "ApplicationUser");
-            OrderVM.OrderDetail = _unitOfWork.OrderDetail
-                .GetAll(u => u.OrderHeaderId == OrderVM.OrderHeader.Id, includeProperties: "Product");
+            SuccessUrl = domain + $"admin/order/PaymentConfirmation?orderHeaderId={OrderVM.OrderHeader.Id}",
+            CancelUrl = domain + $"admin/order/details?orderId={OrderVM.OrderHeader.Id}",
+            LineItems = new List<SessionLineItemOptions>(),
+            Mode = "payment"
+        };
 
-            //stripe logic
-            var domain = "https://localhost:44348/";
-            var options = new SessionCreateOptions {
-                SuccessUrl = domain + $"admin/order/PaymentConfirmation?orderHeaderId={OrderVM.OrderHeader.Id}",
-                CancelUrl = domain + $"admin/order/details?orderId={OrderVM.OrderHeader.Id}",
-                LineItems = new List<SessionLineItemOptions>(),
-                Mode = "payment",
+        foreach (var item in OrderVM.OrderDetail)
+        {
+            var sessionLineItem = new SessionLineItemOptions
+            {
+                PriceData = new SessionLineItemPriceDataOptions
+                {
+                    UnitAmount = (long)(item.Price * 100), // $20.50 => 2050
+                    Currency = "usd",
+                    ProductData = new SessionLineItemPriceDataProductDataOptions
+                    {
+                        Name = item.Product.Title
+                    }
+                },
+                Quantity = item.Count
             };
+            options.LineItems.Add(sessionLineItem);
+        }
 
-            foreach (var item in OrderVM.OrderDetail) {
-                var sessionLineItem = new SessionLineItemOptions {
-                    PriceData = new SessionLineItemPriceDataOptions {
-                        UnitAmount = (long)(item.Price * 100), // $20.50 => 2050
-                        Currency = "usd",
-                        ProductData = new SessionLineItemPriceDataProductDataOptions {
-                            Name = item.Product.Title
-                        }
-                    },
-                    Quantity = item.Count
-                };
-                options.LineItems.Add(sessionLineItem);
-            }
 
+        var service = new SessionService();
+        var session = service.Create(options);
+        _unitOfWork.OrderHeader.UpdateStripePaymentID(OrderVM.OrderHeader.Id, session.Id, session.PaymentIntentId);
+        _unitOfWork.Save();
+        Response.Headers.Add("Location", session.Url);
+        return new StatusCodeResult(303);
+    }
+
+    public IActionResult PaymentConfirmation(int orderHeaderId)
+    {
+        var orderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == orderHeaderId);
+        if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment)
+        {
+            //this is an order by company
 
             var service = new SessionService();
-            Session session = service.Create(options);
-            _unitOfWork.OrderHeader.UpdateStripePaymentID(OrderVM.OrderHeader.Id, session.Id, session.PaymentIntentId);
-            _unitOfWork.Save();
-            Response.Headers.Add("Location", session.Url);
-            return new StatusCodeResult(303);
-        }
+            var session = service.Get(orderHeader.SessionId);
 
-        public IActionResult PaymentConfirmation(int orderHeaderId) {
-
-            OrderHeader orderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == orderHeaderId);
-            if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment) {
-                //this is an order by company
-
-                var service = new SessionService();
-                Session session = service.Get(orderHeader.SessionId);
-
-                if (session.PaymentStatus.ToLower() == "paid") {
-                    _unitOfWork.OrderHeader.UpdateStripePaymentID(orderHeaderId, session.Id, session.PaymentIntentId);
-                    _unitOfWork.OrderHeader.UpdateStatus(orderHeaderId, orderHeader.OrderStatus, SD.PaymentStatusApproved);
-                    _unitOfWork.Save();
-                }
-
-
+            if (session.PaymentStatus.ToLower() == "paid")
+            {
+                _unitOfWork.OrderHeader.UpdateStripePaymentID(orderHeaderId, session.Id, session.PaymentIntentId);
+                _unitOfWork.OrderHeader.UpdateStatus(orderHeaderId, orderHeader.OrderStatus, SD.PaymentStatusApproved);
+                _unitOfWork.Save();
             }
-            return View(orderHeaderId);
         }
+
+
+        return View(orderHeaderId);
+    }
 
 
     #region API CALLS
@@ -201,6 +211,7 @@ public class OrderController : Controller
                 .GetAll(u => u.ApplicationUserId == userId, "ApplicationUser");
         }
 
+
         switch (status)
         {
             case "pending":
@@ -216,6 +227,7 @@ public class OrderController : Controller
                 objOrderHeaders = objOrderHeaders.Where(u => u.OrderStatus == SD.StatusApproved);
                 break;
         }
+
 
         return Json(new { data = objOrderHeaders });
     }

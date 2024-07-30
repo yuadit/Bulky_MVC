@@ -1,5 +1,6 @@
 ﻿@model OrderVM
 <form method="post">
+    <input asp-for="OrderHeader.Id" hidden/>
     <br/>
     <div class="container">
         <div class="card">
@@ -124,7 +125,7 @@
                                 <div class="col-9">
                                     @if (User.IsInRole(SD.Role_Admin) || User.IsInRole(SD.Role_Employee))
                                     {
-                                        <input asp-for="OrderHeader.Carrier" type="text" class="form-control"/>
+                                        <input asp-for="OrderHeader.Carrier" id="carrier" type="text" class="form-control"/>
                                     }
                                     else
                                     {
@@ -137,7 +138,7 @@
                                 <div class="col-9">
                                     @if (User.IsInRole(SD.Role_Admin) || User.IsInRole(SD.Role_Employee))
                                     {
-                                        <input asp-for="OrderHeader.TrackingNumber" type="text" class="form-control"/>
+                                        <input asp-for="OrderHeader.TrackingNumber" id="trackingNumber" type="text" class="form-control"/>
                                     }
                                     else
                                     {
@@ -197,15 +198,14 @@
                             </div>
                             @if (User.IsInRole(SD.Role_Admin) || User.IsInRole(SD.Role_Employee))
                             {
-                                <input type="submit" class="btn btn-warning form-control my-1" value="Update Order Details"/>
+                                <button type="submit" asp-action="UpdateOrderDetail" class="btn btn-warning form-control my-1">Update Order Details</button>
                             }
-
                         </div>
                         <div class="col-12 col-lg-5 offset-lg-1">
                             <h4 class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="text-primary">Order Summary</span>
                             </h4>
-                            <label class="btn btn-outline-primary form-control my-2">@Model.OrderHeader.OrderStatus</label>
+                            <label class="btn btn-outline-primary form-control my-2">Order Status - @Model.OrderHeader.OrderStatus</label>
 
                             <ul class="list-group mb-3">
                                 @foreach (var detail in Model.OrderDetail)
@@ -215,11 +215,11 @@
                                             <div class="col-8">
 
                                                 <h6 class="my-0 text-primary">@detail.Product.Title</h6>
-                                                <small class="text-muted">@detail.Price.ToString("c")</small><br/>
-                                                <small class="text-muted">@detail.Count</small>
+                                                <small class="text-muted">Price : @detail.Price.ToString("c")</small><br/>
+                                                <small class="text-muted">Quantity : @detail.Count</small>
                                             </div>
                                             <div class="col-4 text-end">
-                                                <p class="text-success">>@((detail.Count * detail.Price).ToString("c"))</p>
+                                                <p class="text-success">@((detail.Count * detail.Price).ToString("c"))</p>
                                             </div>
                                         </div>
                                     </li>
@@ -235,8 +235,8 @@
                                     </div>
                                 </li>
                             </ul>
-                            @if (Model.OrderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment &&
-                                 Model.OrderHeader.OrderStatus == SD.StatusShipped)
+
+                            @if (Model.OrderHeader is { PaymentStatus: SD.PaymentStatusDelayedPayment, OrderStatus: SD.StatusShipped })
                             {
                                 <button type="submit" class="btn btn-success form-control my-1">Pay Now</button>
                             }
@@ -244,12 +244,15 @@
                             {
                                 @if (Model.OrderHeader.OrderStatus == SD.StatusApproved)
                                 {
-                                    <button type="submit" class="btn btn-primary form-control my-1">Start Processing</button>
+                                    <button type="submit" asp-action="StartProcessing"
+                                            class="btn btn-primary form-control my-1">
+                                        Start Processing
+                                    </button>
                                 }
 
                                 @if (Model.OrderHeader.OrderStatus == SD.StatusInProcess)
                                 {
-                                    <button type="submit" class="btn btn-primary form-control my-1">Ship Order</button>
+                                    <button type="submit" asp-action="ShipOrder" onclick="return validateInput()" class="btn btn-primary form-control my-1">Ship Order</button>
                                 }
 
                                 @if (Model.OrderHeader.OrderStatus != SD.StatusRefunded &&
@@ -266,3 +269,31 @@
         </div>
     </div>
 </form>
+
+
+@section Scripts{
+
+    <partial name="_ValidationScriptsPartial"/>
+    <script>
+    function validateInput(){
+        if(document.getElementById("trackingNumber").value===""){
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Please enter tracking number!',
+            });
+            return false;
+        }
+        if (document.getElementById("carrier").value ==="") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Please enter carrier!',
+            });
+            return false;
+        }
+        return true;
+    }
+</script>
+
+}
