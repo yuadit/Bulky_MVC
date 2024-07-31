@@ -24,7 +24,7 @@ public class ShoppingCartViewComponent : ViewComponent {
                     _unitOfWork.ShoppingCart.GetAll(u => u.ApplicationUserId == claim.Value).Count());
             }
 
-            return View(HttpContext.Session.GetInt32(SD.SessionCart));
+            return View((int)HttpContext.Session.GetInt32(SD.SessionCart)!);
         }
         else {
             HttpContext.Session.Clear();
