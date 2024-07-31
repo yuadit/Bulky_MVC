@@ -145,7 +145,10 @@ public class RegisterModel : PageModel
                 if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl });
 
-                await _signInManager.SignInAsync(user, false);
+                if (User.IsInRole(SD.Role_Admin))
+                    TempData["success"] = "New User Created Successfully";
+                else
+                    await _signInManager.SignInAsync(user, false);
                 return LocalRedirect(returnUrl);
             }
 
