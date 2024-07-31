@@ -16,6 +16,7 @@
         </PackageReference>
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.3"/>
         <PackageReference Include="Stripe.net" Version="41.9.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="8.0.0-preview.1.23112.2" />
     </ItemGroup>
 
     <ItemGroup>
