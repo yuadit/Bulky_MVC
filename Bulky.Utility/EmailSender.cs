@@ -16,7 +16,7 @@ public class EmailSender : IEmailSender
     {
         var client = new BrevoClient(BravoSecret);
         var newmail = client.SendAsync(
-            new Sender("Bulk Book", "hello@dotnetmastery.com"),
+            new Sender("Bulky Book", "hello@dotnetmastery.com"),
             new List<Recipient> { new("Dear Customer", email) },
             subject,
             htmlMessage // true if body is HTML
