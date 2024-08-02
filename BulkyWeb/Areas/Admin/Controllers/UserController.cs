@@ -1,8 +1,10 @@
 ﻿using Bulky.DataAccess.Data;
 using Bulky.Models;
+using Bulky.Models.ViewModels;
 using Bulky.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace BulkyWeb.Areas.Admin.Controllers;
@@ -19,6 +21,26 @@ public class UserController : Controller
     public IActionResult Index() 
     {
         return View();
+    }
+    
+    public IActionResult RoleManagment(string userId) {
+
+        string RoleID = _db.UserRoles.FirstOrDefault(u => u.UserId == userId).RoleId;
+
+        RoleManagementVM RoleVM = new RoleManagementVM() {
+            ApplicationUser = _db.ApplicationUsers.Include(u => u.Company).FirstOrDefault(u => u.Id == userId),
+            RoleList = _db.Roles.Select(i => new SelectListItem {
+                Text = i.Name,
+                Value = i.Name
+            }),
+            CompanyList = _db.Companies.Select(i => new SelectListItem {
+                Text = i.Name,
+                Value = i.Id.ToString()
+            }),
+        };
+
+        RoleVM.ApplicationUser.Role = _db.Roles.FirstOrDefault(u => u.Id == RoleID).Name;
+        return View(RoleVM);
     }
 
 
