@@ -382,7 +382,7 @@ namespace Bulky.DataAccess.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("ProductImage");
+                    b.ToTable("ProductImages");
                 });
 
             modelBuilder.Entity("Bulky.Models.ShoppingCart", b =>
