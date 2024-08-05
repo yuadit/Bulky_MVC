@@ -7,9 +7,10 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _db;
 
-    public UnitOfWork(ApplicationDbContext db)
+    public UnitOfWork(ApplicationDbContext db, IProductImageRepository productImage)
     {
         _db = db;
+        ProductImage = productImage;
         Category = new CategoryRepository(_db);
         Product = new ProductRepository(_db);
         Company = new CompanyRepository(_db);
@@ -26,7 +27,7 @@ public class UnitOfWork : IUnitOfWork
     public IProductRepository Product { get; }
     public IOrderHeaderRepository OrderHeader { get; }
     public IOrderDetailRepository OrderDetail { get; }
-
+    public IProductImageRepository ProductImage { get; }
 
     public void Save()
     {
