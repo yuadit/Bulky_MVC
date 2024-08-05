@@ -49,53 +49,62 @@ public class ProductController : Controller
     }
 
     [HttpPost]
-    public IActionResult Upsert(ProductVM productVM, IFormFile? file)
+    public IActionResult Upsert(ProductVM productVM, List<IFormFile> files)
     {
-        // if (obj.ListPrice > obj.Price || obj.ListPrice > obj.Price50 || obj.ListPrice > obj.Price100)
-        //     ModelState.AddModelError("ListPrice", "List Price cannot be cheaper than other prices");
-        if (!ModelState.IsValid)
+        if (ModelState.IsValid)
         {
-            productVM.CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
+            if (productVM.Product.Id == 0)
+                _unitOfWork.Product.Add(productVM.Product);
+            else
+                _unitOfWork.Product.Update(productVM.Product);
+
+            _unitOfWork.Save();
+
+
+            var wwwRootPath = _webHostEnvironment.WebRootPath;
+            if (files != null)
             {
-                Text = u.Name,
-                Value = u.Id.ToString()
-            });
-            return View(productVM);
+                foreach (var file in files)
+                {
+                    var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+                    var productPath = @"images\products\product-" + productVM.Product.Id;
+                    var finalPath = Path.Combine(wwwRootPath, productPath);
+
+                    if (!Directory.Exists(finalPath))
+                        Directory.CreateDirectory(finalPath);
+
+                    using (var fileStream = new FileStream(Path.Combine(finalPath, fileName), FileMode.Create))
+                    {
+                        file.CopyTo(fileStream);
+                    }
+
+                    ProductImage productImage = new()
+                    {
+                        ImageUrl = @"\" + productPath + @"\" + fileName,
+                        ProductId = productVM.Product.Id
+                    };
+
+                    if (productVM.Product.ProductImages == null)
+                        productVM.Product.ProductImages = new List<ProductImage>();
+
+                    productVM.Product.ProductImages.Add(productImage);
+                }
+
+                _unitOfWork.Product.Update(productVM.Product);
+                _unitOfWork.Save();
+            }
+
+
+            TempData["success"] = "Product created/updated successfully";
+            return RedirectToAction("Index");
         }
 
-        var wwwRootPath = _webHostEnvironment.WebRootPath;
-        if (file != null)
+        productVM.CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
         {
-            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-            var productPath = Path.Combine(wwwRootPath, @"images\product");
-
-            // if (!string.IsNullOrEmpty(productVM.Product.ImageUrl))
-            // {
-            //     //delete the old image
-            //     var oldImagePath = Path.Combine(wwwRootPath, productVM.Product.ImageUrl.TrimStart('\\'));
-            //     if (System.IO.File.Exists(oldImagePath)) System.IO.File.Delete(oldImagePath);
-            // }
-            //
-            // using (var fileStream = new FileStream(Path.Combine(productPath, fileName), FileMode.Create))
-            // {
-            //     file.CopyTo(fileStream);
-            // }
-            //
-            // productVM.Product.ImageUrl = @"\images\product\" + fileName;
-        }
-        else
-        {
-            // if (string.IsNullOrEmpty(productVM.Product.ImageUrl)) productVM.Product.ImageUrl = "";
-        }
-
-        if (productVM.Product.Id == 0)
-            _unitOfWork.Product.Add(productVM.Product);
-        else
-            _unitOfWork.Product.Update(productVM.Product);
-
-        _unitOfWork.Save();
-        // TempData["success"] = "Product created successfully";
-        return RedirectToAction("Index");
+            Text = u.Name,
+            Value = u.Id.ToString()
+        });
+        return View(productVM);
     }
 
     #region API CALLS
