@@ -44,7 +44,7 @@ public class ProductController : Controller
         if (id == null || id == 0) return View(productVm);
 
         //update
-        productVm.Product = _unitOfWork.Product.Get(u => u.Id == id);
+        productVm.Product = _unitOfWork.Product.Get(u=>u.Id==id,includeProperties:"ProductImages");
         return View(productVm);
     }
 
